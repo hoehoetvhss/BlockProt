@@ -38,12 +38,16 @@ import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Chest;
+import org.bukkit.block.data.Bisected;
+import org.bukkit.block.data.type.Door;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
+import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.jetbrains.annotations.NotNull;
@@ -62,6 +66,10 @@ public class BlockEventListener implements Listener {
     @EventHandler
     public void onBlockBurn(BlockBurnEvent event) {
         if (BlockProt.getDefaultConfig().isWorldExcluded(event.getBlock().getWorld())) return;
+        if (BlockUtil.getProtectedDoorAbove(event.getBlock()) != null) {
+            event.setCancelled(true);
+            return;
+        }
         if (!BlockProt.getDefaultConfig().isLockable(event.getBlock().getType())) return;
         // The event hasn't been cancelled already, we'll check if need
         // to cancel it manually.
@@ -75,6 +83,24 @@ public class BlockEventListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onBlockBreak(BlockBreakEvent event) {
         if (BlockProt.getDefaultConfig().isWorldExcluded(event.getBlock().getWorld())) return;
+
+        final Block protectedDoorAbove = BlockUtil.getProtectedDoorAbove(event.getBlock());
+        if (protectedDoorAbove != null) {
+            final BlockNBTHandler doorHandler = new BlockNBTHandler(protectedDoorAbove);
+            if (!doorHandler.isOwner(event.getPlayer().getUniqueId().toString())) {
+                event.setCancelled(true);
+                return;
+            }
+            if (!event.isCancelled()) {
+                StatHandler.removeContainer(event.getPlayer(), protectedDoorAbove);
+                doorHandler.clear();
+                final Block otherHalf = BlockUtil.getOtherDoorHalf(protectedDoorAbove.getState());
+                if (otherHalf != null) {
+                    new BlockNBTHandler(otherHalf).clear();
+                }
+            }
+        }
+
         if (!BlockProt.getDefaultConfig().isLockable(event.getBlock().getType())) return; // We only want to check for lockable blocks.
 
         BlockNBTHandler handler = new BlockNBTHandler(event.getBlock());
@@ -228,6 +254,29 @@ public class BlockEventListener implements Listener {
 
             if (handler.isProtected())
                 event.setCancelled(true);
+        } else if (BlockProt.getDefaultConfig().isLockableDoor(event.getBlock().getType())
+            && event.getBlock().getBlockData() instanceof Door door
+            && door.getHalf() == Bisected.Half.BOTTOM
+            && !event.getBlock().getRelative(BlockFace.DOWN).getType().isSolid()) {
+            if (new BlockNBTHandler(event.getBlock()).isProtected()) {
+                event.setCancelled(true);
+            }
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onBlockFade(@NotNull final BlockFadeEvent event) {
+        if (BlockProt.getDefaultConfig().isWorldExcluded(event.getBlock().getWorld())) return;
+        if (BlockUtil.getProtectedDoorAbove(event.getBlock()) != null) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onEntityChangeBlock(@NotNull final EntityChangeBlockEvent event) {
+        if (BlockProt.getDefaultConfig().isWorldExcluded(event.getBlock().getWorld())) return;
+        if (BlockUtil.getProtectedDoorAbove(event.getBlock()) != null) {
+            event.setCancelled(true);
         }
     }
 

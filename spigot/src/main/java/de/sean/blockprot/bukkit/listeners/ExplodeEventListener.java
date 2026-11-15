@@ -20,6 +20,7 @@ package de.sean.blockprot.bukkit.listeners;
 
 import de.sean.blockprot.bukkit.BlockProt;
 import de.sean.blockprot.bukkit.nbt.BlockNBTHandler;
+import de.sean.blockprot.bukkit.util.BlockUtil;
 import org.bukkit.block.Block;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -45,8 +46,13 @@ public class ExplodeEventListener implements Listener {
     private void checkBlocks(ListIterator<Block> it) {
         while (it.hasNext()) {
             Block b = it.next();
+            if (BlockUtil.getProtectedDoorAbove(b) != null) {
+                it.remove();
+                continue;
+            }
             if (BlockProt.getDefaultConfig().isLockableTileEntity(b.getType()) ||
-                BlockProt.getDefaultConfig().isLockableBlock(b.getType())) {
+                BlockProt.getDefaultConfig().isLockableBlock(b.getType()) ||
+                BlockProt.getDefaultConfig().isLockableDoor(b.getType())) {
                 // Someone owns this block, block its destroying.
                 final BlockNBTHandler handler = new BlockNBTHandler(b);
                 if (handler.isProtected())

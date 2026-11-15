@@ -18,9 +18,12 @@
 
 package de.sean.blockprot.bukkit.util;
 
+import de.sean.blockprot.bukkit.BlockProt;
+import de.sean.blockprot.bukkit.nbt.BlockNBTHandler;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Chest;
 import org.bukkit.block.DoubleChest;
@@ -118,5 +121,15 @@ public final class BlockUtil {
      */
     public static @NotNull String getHumanReadableBlockName(@NotNull Material material) {
         return capitalizeFirstLetters(material.name());
+    }
+
+    @Nullable
+    public static Block getProtectedDoorAbove(@NotNull final Block block) {
+        final Block above = block.getRelative(BlockFace.UP);
+        if (!BlockProt.getDefaultConfig().isLockableDoor(above.getType())) {
+            return null;
+        }
+        final BlockNBTHandler handler = new BlockNBTHandler(above);
+        return handler.isProtected() ? above : null;
     }
 }

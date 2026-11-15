@@ -20,6 +20,7 @@ package de.sean.blockprot.bukkit.listeners;
 
 import de.sean.blockprot.bukkit.BlockProt;
 import de.sean.blockprot.bukkit.nbt.BlockNBTHandler;
+import de.sean.blockprot.bukkit.util.BlockUtil;
 import org.bukkit.block.Block;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -40,6 +41,10 @@ public class PistonEventListener implements Listener {
         }
 
         for (Block block : event.getBlocks()) {
+            if (BlockUtil.getProtectedDoorAbove(block) != null) {
+                event.setCancelled(true);
+                return;
+            }
             // Check if the block is lockable
             if (BlockProt.getDefaultConfig().isLockableShulkerBox(block.getType())) {
                 // Shulker boxes drop right away. Those will therefore not have
@@ -68,6 +73,10 @@ public class PistonEventListener implements Listener {
         // can't pull back blocks, so we will ignore those.
         if (!event.isSticky()) return;
         for (Block block : event.getBlocks()) {
+            if (BlockUtil.getProtectedDoorAbove(block) != null) {
+                event.setCancelled(true);
+                return;
+            }
             // Check if the block is lockable. Shulker boxes can't be pulled back
             // so we don't do the same as in the onPistonExtend event handler.
             if (BlockProt.getDefaultConfig().isLockable(block.getType())) {
