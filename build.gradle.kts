@@ -13,8 +13,7 @@ buildscript {
 
 plugins {
     id("org.gradle.java-library")
-    id("org.ajoberstar.grgit") version "5.2.1"
-    id("org.cadixdev.licenser") version "0.6.1"
+    id("org.ajoberstar.grgit") version "5.3.0"
 }
 
 fun gitBranchName(): String {
@@ -29,11 +28,10 @@ fun gitBranchName(): String {
 }
 
 val env: MutableMap<String, String> = System.getenv()
-val blockProtVersion: String by project
+val blockProtVersion = project.property("blockProtVersion").toString()
 
 allprojects {
     apply(plugin = "org.gradle.java-library")
-    apply(plugin = "org.cadixdev.licenser")
 
     group = "de.sean.blockprot"
     version = blockProtVersion
@@ -61,18 +59,6 @@ allprojects {
             if (ext["gitBranchName"] == "master" || ext["gitBranchName"] == "HEAD") null
             else (ext["gitBranchName"] as String)
         )
-    }
-
-    afterEvaluate {
-        // We use license instead of spotless now, as spotless'
-        // java formatter had too many issues.
-        license {
-            header(rootProject.file("HEADER.txt"))
-            include("**/*.java")
-            properties {
-                this["year"] = "2021 - 2025"
-            }
-        }
     }
 }
 

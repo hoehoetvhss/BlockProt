@@ -6,18 +6,15 @@ buildscript {
 
 plugins {
     id("maven-publish")
-    // Since the original shadow is currently not being updated, we need to use this fork instead.
-    // See https://plugins.gradle.org/plugin/io.github.goooler.shadow
-    id("io.github.goooler.shadow") version "8.1.7"
-    id("net.kyori.blossom") version "1.3.1"
-    id("xyz.jpenilla.run-paper") version "2.3.0"
+    id("com.gradleup.shadow") version "9.6.1"
+    id("xyz.jpenilla.run-paper") version "3.1.0"
 }
 
-val nbtApiVersion: String by project
-val anvilGuiVersion: String by project
-val townyVersion: String by project
-val papiVersion: String by project
-val worldGuardVersion: String by project
+val nbtApiVersion = project.property("nbtApiVersion").toString()
+val anvilGuiVersion = project.property("anvilGuiVersion").toString()
+val townyVersion = project.property("townyVersion").toString()
+val papiVersion = project.property("papiVersion").toString()
+val worldGuardVersion = project.property("worldGuardVersion").toString()
 
 repositories {
     maven("https://hub.spigotmc.org/nexus/content/repositories/snapshots/") {
@@ -63,20 +60,43 @@ dependencies {
     implementation("com.github.IncrediblePlugins:LandsAPI:7.25.4")
 }
 
-blossom {
-    // We use blossom to dynamically get the list of language files
-    // and inject them into the Translator.java source file.
-    replaceToken(
-        "\$TRANSLATION_FILES",
-        // Get the first sourceSet and iterate over all resource files.
-        fileTree(sourceSets["main"].resources.srcDirs.first()).files.filter {
-            // Use a regex string to only include translations_xx.yml files.
-            it.path.contains("translations_[a-z].+?.yml".toRegex())
-        }.map {
-            it.name
-        }.toString(),
-        "src/main/java/de/sean/blockprot/bukkit/Translator.java"
-    )
+val generatedTranslationsDir = layout.buildDirectory.dir("generated/sources/translations/java")
+
+val generateTranslationFiles = tasks.register("generateTranslationFiles") {
+    val langDir = layout.projectDirectory.dir("src/main/resources/lang")
+    inputs.dir(langDir)
+    outputs.dir(generatedTranslationsDir)
+
+    doLast {
+        val translationFiles = langDir.asFileTree.files
+            .filter { it.name.matches("translations_[a-z].+\\.yml".toRegex()) }
+            .map { it.name }
+            .sorted()
+            .toString()
+
+        val outputFile = generatedTranslationsDir.get()
+            .file("de/sean/blockprot/bukkit/GeneratedTranslationFiles.java")
+            .asFile
+        outputFile.parentFile.mkdirs()
+        outputFile.writeText(
+            """
+            package de.sean.blockprot.bukkit;
+
+            final class GeneratedTranslationFiles {
+                static final String TRANSLATION_FILES = "${translationFiles.replace("\"", "\\\"")}";
+                private GeneratedTranslationFiles() {}
+            }
+            """.trimIndent() + "\n"
+        )
+    }
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir(generateTranslationFiles)
+        }
+    }
 }
 
 java {

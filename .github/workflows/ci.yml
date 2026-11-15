@@ -5,18 +5,22 @@ on:
     branches: [ master ]
     paths:
       - '**.java'
+      - 'spigot/src/main/resources/**'
       - 'gradle/**'
       - 'gradle.properties'
       - '**.gradle'
       - '**.gradle.kts'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [ master ]
     paths:
       - '**.java'
+      - 'spigot/src/main/resources/**'
       - 'gradle/**'
       - 'gradle.properties'
       - '**.gradle'
       - '**.gradle.kts'
+      - '.github/workflows/ci.yml'
   workflow_dispatch:
 
 jobs:
@@ -31,10 +35,10 @@ jobs:
       - uses: actions/checkout@master
         with:
           fetch-depth: 1
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@main
         with:
-          java-version: '21'
+          java-version: '25'
           distribution: 'temurin'
       - uses: gradle/actions/setup-gradle@main
       - name: Ensure gradlew.sh is executable
@@ -48,3 +52,4 @@ jobs:
           path: |
             **/build/libs/*-all.jar
             !common/**
+          if-no-files-found: error
