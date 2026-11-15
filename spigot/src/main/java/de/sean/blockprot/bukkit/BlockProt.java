@@ -23,6 +23,7 @@ import de.sean.blockprot.bukkit.config.DefaultConfig;
 import de.sean.blockprot.bukkit.integrations.*;
 import de.sean.blockprot.bukkit.listeners.*;
 import de.sean.blockprot.bukkit.metrics.IntegrationBarChart;
+import de.sean.blockprot.bukkit.nbt.BlockProtDatabase;
 import de.sean.blockprot.bukkit.nbt.StatHandler;
 import de.sean.blockprot.bukkit.tasks.UpdateChecker;
 import de.tr7zw.changeme.nbtapi.utils.MinecraftVersion;
@@ -134,6 +135,7 @@ public final class BlockProt extends JavaPlugin {
             File dataDir = getDataDirectory();
             File userCacheFile = new File(dataDir, "blockprot_usercache.sqlite");
             playerProfileCache = new SQLiteCache(userCacheFile);
+            BlockProtDatabase.enableWalOnDatabaseFile(userCacheFile);
             playerProfileService = new CachedProfileService(playerProfileCache);
         } catch (IOException e) {
             throw new RuntimeException("Failed to open SQLite connection to usercache database", e);

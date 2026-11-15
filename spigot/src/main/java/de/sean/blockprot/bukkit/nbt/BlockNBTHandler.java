@@ -292,6 +292,7 @@ public final class BlockNBTHandler extends FriendSupportingHandler<NBTCompound> 
                 } else {
                     addFriend(friend);
                     this.applyToOtherContainer();
+                    this.syncToDatabase();
                     return new LockReturnValue(true, null);
                 }
             }
@@ -299,6 +300,7 @@ public final class BlockNBTHandler extends FriendSupportingHandler<NBTCompound> 
                 if (containsFriend(friend)) {
                     removeFriend(friend);
                     this.applyToOtherContainer();
+                    this.syncToDatabase();
                     return new LockReturnValue(true, null);
                 } else {
                     return new LockReturnValue(false, null);
@@ -367,6 +369,16 @@ public final class BlockNBTHandler extends FriendSupportingHandler<NBTCompound> 
         this.setOwner("");
         this.setFriends(Collections.emptyList());
         this.getRedstoneHandler().reset();
+        BlockProtDatabase.deleteBlock(this.block.getLocation());
+    }
+
+    public void syncToDatabase() {
+        final String owner = this.getOwner();
+        if (owner.isEmpty()) {
+            BlockProtDatabase.deleteBlock(this.block.getLocation());
+        } else {
+            BlockProtDatabase.upsertBlock(this.block.getLocation(), owner, this.getNbtCopy().toString());
+        }
     }
 
     /**
@@ -383,6 +395,7 @@ public final class BlockNBTHandler extends FriendSupportingHandler<NBTCompound> 
         this.setFriends(blockNBTHandler.getFriends());
         this.getRedstoneHandler().mergeHandler(blockNBTHandler.getRedstoneHandler());
         this.setName(handler.getName());
+        this.syncToDatabase();
     }
 
     @Override
@@ -391,5 +404,6 @@ public final class BlockNBTHandler extends FriendSupportingHandler<NBTCompound> 
         container.removeKey(OWNER_ATTRIBUTE);
         super.pasteNbt(container);
         this.applyToOtherContainer();
+        this.syncToDatabase();
     }
 }

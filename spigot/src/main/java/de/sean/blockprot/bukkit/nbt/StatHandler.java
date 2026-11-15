@@ -83,104 +83,18 @@ public final class StatHandler extends NBTHandler<NBTCompound> {
     }
 
     public static void enable() {
-        if (nbtFile != null) return;
-
-        try {
-            File dataDir = BlockProt.getInstance().getDataDirectory();
-            final File baseFile = new File(dataDir, STAT_FILE_NAME);
-            backupFile = new File(dataDir, STAT_BACKUP_FILE_NAME);
-            temporarySwapFile = new File(dataDir, STAT_FILE_NAME + ".tmp");
-
-            if (!backupFile.exists())
-                if (!backupFile.createNewFile())
-                    throw new IOException("Failed to create backup statistic NBT file!");
-
-            try {
-                // The NBTFile will create the file if it doesn't exist.
-                nbtFile = new NBTFile(baseFile);
-            } catch (NbtApiException e) {
-                // The base file has been corrupted and couldn't be loaded.
-                if (backupFile.exists()) {
-                    try {
-                        // A backup exists, we'll try reading from it. If this fails, then that's too bad.
-                        final NBTFile backupNbtFile = new NBTFile(backupFile);
-                        backupNbtFile.writeCompound(Files.newOutputStream(baseFile.toPath()));
-                        nbtFile = new NBTFile(baseFile);
-                    } catch (NbtApiException be) {
-                        // We have no backup, or it is also corrupt, we need to just delete and start from the beginning.
-                        BlockProt.getInstance().getLogger().warning("The statistics file and its backup are corrupted!");
-                        backupFile.delete();
-                        baseFile.delete();
-                        nbtFile = new NBTFile(baseFile);
-                    }
-                } else {
-                    // We have no backup, we need to just delete and start from the beginning.
-                    BlockProt.getInstance().getLogger().warning("The statistics file was corrupted and no backup file was found!");
-                    baseFile.delete();
-                    nbtFile = new NBTFile(baseFile);
-                }
-            }
-
-            fileSaveTask = Bukkit.getScheduler().runTaskTimerAsynchronously(
-                BlockProt.getInstance(),
-                new StatisticFileSaveTask(),
-                0L,
-                5 * 60 * 20 // 5 minutes * 60 seconds * 20 ticks
-            );
-        } catch (Throwable e) {
-            BlockProt.getInstance().getLogger().warning("Failed to open BlockProt statistic file.");
-        }
+        File dataDir = BlockProt.getInstance().getDataDirectory();
+        BlockProtDatabase.enable(new File(dataDir, "blockprot_locks.sqlite"));
     }
 
     public static void saveFile() throws IOException {
-        /* We will always first save to a temporary file and then
-           swap it with the actual file. This ensures that the write
-           process on the actual file does not get interrupted, thus
-           never corrupting it. */
-        if (nbtFile != null && backupFile != null && temporarySwapFile != null) {
-            OutputStream outputStream = Files.newOutputStream(backupFile.toPath());
-            nbtFile.writeCompound(outputStream);
-            outputStream.close();
-
-            try {
-                if (backupFile.exists())
-                    new NBTFile(backupFile);
-            } catch (NbtApiException e) {
-                BlockProt.getInstance().getLogger().warning("Failed to re-read statistic NBT File!");
-                backupFile.delete();
-                return;
-            }
-
-            if (nbtFile.getFile().exists() && backupFile.exists()) {
-                try {
-                    // TODO: This sometimes makes temporarySwapFile disappear...
-                    Files.move(backupFile.toPath(), temporarySwapFile.toPath());
-                    Files.move(nbtFile.getFile().toPath(), backupFile.toPath());
-                    Files.move(temporarySwapFile.toPath(), nbtFile.getFile().toPath());
-                } catch (IOException e) {
-                    throw new IOException("Failed to swap backup NBT file: " + e.getMessage());
-                }
-            } else if (backupFile.exists()) {
-                /* The base NBT file doesn't exist, probably got corrupted */
-                if (!backupFile.renameTo(nbtFile.getFile())) {
-                    throw new IOException("Failed to rename backup NBT file.");
-                }
-            } else {
-                // This shouldn't happen
-                throw new IOException("NBT files have been deleted after usage!");
-            }
-        }
     }
 
     public static void disable() {
         if (fileSaveTask != null && !fileSaveTask.isCancelled())
             fileSaveTask.cancel();
 
-        try {
-            StatHandler.saveFile();
-        } catch (IOException e) {
-            BlockProt.getInstance().getLogger().warning("Failed to save statistics file: " + e.getMessage());
-        }
+        BlockProtDatabase.disable();
     }
 
     /**
@@ -188,12 +102,11 @@ public final class StatHandler extends NBTHandler<NBTCompound> {
      * global block count.
      */
     public static void addBlock(@NotNull final Player player, @NotNull final Location block) {
-        BlockCountStatistic countStatistic = new BlockCountStatistic();
-        PlayerBlocksStatistic containersStatistic = new PlayerBlocksStatistic();
-        StatHandler.getStatistic(countStatistic);
-        StatHandler.getStatistic(containersStatistic, player);
-        countStatistic.increment();
-        containersStatistic.add(block);
+        String nbtData = "";
+        if (block.getWorld() != null) {
+            nbtData = new BlockNBTHandler(block.getBlock()).getNbtCopy().toString();
+        }
+        BlockProtDatabase.upsertBlock(block, player.getUniqueId().toString(), nbtData);
     }
 
     /**
@@ -202,12 +115,7 @@ public final class StatHandler extends NBTHandler<NBTCompound> {
      */
     @Deprecated
     public static void removeContainer(@NotNull final Player player, @NotNull final Location block) {
-        BlockCountStatistic countStatistic = new BlockCountStatistic();
-        PlayerBlocksStatistic containersStatistic = new PlayerBlocksStatistic();
-        StatHandler.getStatistic(countStatistic);
-        StatHandler.getStatistic(containersStatistic, player);
-        countStatistic.decrement();
-        containersStatistic.remove(block);
+        BlockProtDatabase.deleteBlock(block);
     }
 
     /**
@@ -231,25 +139,14 @@ public final class StatHandler extends NBTHandler<NBTCompound> {
     }
 
     private static void removeContainer(@NotNull final String playerUuid, @NotNull final Location location) {
-        BlockCountStatistic countStatistic = new BlockCountStatistic();
-        PlayerBlocksStatistic containersStatistic = new PlayerBlocksStatistic();
-        StatHandler.getStatistic(countStatistic);
-        StatHandler.getStatisticForPlayer(containersStatistic, playerUuid);
-        countStatistic.decrement();
-        containersStatistic.remove(location);
+        BlockProtDatabase.deleteBlock(location);
     }
 
     public static int unlockAllForPlayer(@NotNull final String playerUuid) {
-        PlayerBlocksStatistic containersStatistic = new PlayerBlocksStatistic();
-        getStatisticForPlayer(containersStatistic, playerUuid);
-        final var entries = new ArrayList<LocationListEntry>(containersStatistic.get());
+        final var locations = BlockProtDatabase.getBlocksByOwner(playerUuid);
         int unlockedCount = 0;
-        for (LocationListEntry entry : entries) {
-            Location loc = entry.get();
-            if (loc == null || loc.getWorld() == null) {
-                if (loc != null) {
-                    removeContainer(playerUuid, loc);
-                }
+        for (Location loc : locations) {
+            if (loc.getWorld() == null) {
                 continue;
             }
             Block block = loc.getBlock();
@@ -259,22 +156,19 @@ public final class StatHandler extends NBTHandler<NBTCompound> {
                 handler.applyToOtherContainer();
                 unlockedCount++;
             }
-            removeContainer(playerUuid, block);
         }
+        BlockProtDatabase.deleteBlocksByOwner(playerUuid);
         return unlockedCount;
     }
 
     public static int applyConfigurationToAll(@NotNull final Player player, @Nullable final NBTContainer clipboard) {
         final String playerUuid = player.getUniqueId().toString();
-        PlayerBlocksStatistic containersStatistic = new PlayerBlocksStatistic();
-        getStatisticForPlayer(containersStatistic, playerUuid);
-        final var entries = new ArrayList<LocationListEntry>(containersStatistic.get());
+        final var locations = BlockProtDatabase.getBlocksByOwner(playerUuid);
         final PlayerSettingsHandler settingsHandler = clipboard == null ? new PlayerSettingsHandler(player) : null;
         int updatedCount = 0;
 
-        for (LocationListEntry entry : entries) {
-            Location loc = entry.get();
-            if (loc == null || loc.getWorld() == null) {
+        for (Location loc : locations) {
+            if (loc.getWorld() == null) {
                 continue;
             }
             Block block = loc.getBlock();
@@ -298,6 +192,7 @@ public final class StatHandler extends NBTHandler<NBTCompound> {
                 }
                 handler.applyToOtherContainer();
             }
+            BlockProtDatabase.upsertBlock(loc, playerUuid, handler.getNbtCopy().toString());
             updatedCount++;
         }
         return updatedCount;
@@ -322,14 +217,20 @@ public final class StatHandler extends NBTHandler<NBTCompound> {
         if (statistic.getType() == StatisticType.ALL || statistic.getType() == StatisticType.PLAYER) {
             // Only get the statistic if player is not null.
             if (playerUuid != null) {
-                getStatsForPlayer(playerUuid)
-                    .ifPresent(handler -> handler.updateStatistic(statistic));
+                NBTContainer container = new NBTContainer();
+                statistic.updateContainer(container);
+                if (statistic instanceof PlayerBlocksStatistic playerBlocksStatistic) {
+                    for (Location loc : BlockProtDatabase.getBlocksByOwner(playerUuid)) {
+                        playerBlocksStatistic.add(loc);
+                    }
+                }
             }
         }
         // Let "ALL" fallthrough.
         if (statistic.getType() == StatisticType.ALL || statistic.getType() == StatisticType.GLOBAL) {
-            final StatHandler stats = getServerStats();
-            stats.updateStatistic(statistic);
+            NBTContainer container = new NBTContainer();
+            container.setInteger("container_count", BlockProtDatabase.getTotalLockedBlockCount());
+            statistic.updateContainer(container);
         }
     }
 
