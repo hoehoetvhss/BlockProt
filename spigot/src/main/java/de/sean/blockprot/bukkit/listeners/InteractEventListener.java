@@ -36,6 +36,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -96,6 +97,12 @@ public class InteractEventListener implements Listener {
                 }
             }
         } else {
+            if (event.getHand() == EquipmentSlot.OFF_HAND) {
+                if (player.getInventory().getItemInMainHand().getType().isAir()) {
+                    event.setCancelled(true);
+                }
+                return;
+            }
             if (event.hasItem()) return; // Only enter the menu with an empty hand.
             event.setCancelled(true);
 
