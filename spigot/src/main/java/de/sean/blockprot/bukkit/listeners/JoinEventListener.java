@@ -22,6 +22,7 @@ import de.sean.blockprot.bukkit.BlockProt;
 import de.sean.blockprot.bukkit.nbt.BlockProtDatabase;
 import de.sean.blockprot.bukkit.nbt.PlayerSettingsHandler;
 import de.sean.blockprot.bukkit.tasks.UpdateChecker;
+import de.sean.blockprot.bukkit.util.PlayerSkinUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -48,19 +49,27 @@ public class JoinEventListener implements Listener {
         if (BlockProt.getDefaultConfig().publicIsFriendByDefault() && !player.hasPlayedBefore()) {
             new PlayerSettingsHandler(player).addEveryoneAsFriend();
         }
-        cachePlayerProfileAndSkin(player);
-        Bukkit.getScheduler().runTaskLater(BlockProt.getInstance(), () -> {
-            if (player.isOnline()) {
-                cachePlayerProfileAndSkin(player);
-            }
-        }, 40L);
+        BlockProt.getProfileCache().put(new Profile(player.getUniqueId(), player.getName()));
+        if (!PlayerSkinUtil.extractAndSaveSkin(player.getUniqueId(), player.getPlayerProfile())) {
+            scheduleSkinCapture(player, 40L, 100L, 200L);
+        }
     }
 
-    private void cachePlayerProfileAndSkin(Player player) {
-        BlockProt.getProfileCache().put(new Profile(player.getUniqueId(), player.getName()));
-        URL skinUrl = player.getPlayerProfile().getTextures().getSkin();
-        if (skinUrl != null) {
-            BlockProtDatabase.upsertPlayerSkin(player.getUniqueId(), skinUrl.toString());
+    private void scheduleSkinCapture(Player player, long... delays) {
+        scheduleSkinCaptureAt(player, delays, 0);
+    }
+
+    private void scheduleSkinCaptureAt(Player player, long[] delays, int index) {
+        if (index >= delays.length) {
+            return;
         }
+        Bukkit.getScheduler().runTaskLater(BlockProt.getInstance(), () -> {
+            if (!player.isOnline()) {
+                return;
+            }
+            if (!PlayerSkinUtil.extractAndSaveSkin(player.getUniqueId(), player.getPlayerProfile())) {
+                scheduleSkinCaptureAt(player, delays, index + 1);
+            }
+        }, delays[index]);
     }
 }

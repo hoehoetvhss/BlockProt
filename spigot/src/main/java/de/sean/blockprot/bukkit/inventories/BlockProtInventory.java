@@ -23,6 +23,7 @@ import de.sean.blockprot.bukkit.TranslationKey;
 import de.sean.blockprot.bukkit.Translator;
 import de.sean.blockprot.bukkit.nbt.BlockNBTHandler;
 import de.sean.blockprot.bukkit.nbt.BlockProtDatabase;
+import de.sean.blockprot.bukkit.util.PlayerSkinUtil;
 import de.sean.blockprot.bukkit.nbt.FriendSupportingHandler;
 import de.sean.blockprot.bukkit.nbt.PlayerSettingsHandler;
 import de.sean.blockprot.nbt.FriendModifyAction;
@@ -459,14 +460,43 @@ public abstract class BlockProtInventory implements InventoryHolder {
     }
 
     public void setPlayerSkull(int index, @NotNull final UUID uuid, @Nullable final String name) {
-        PlayerProfile profile = resolvePlayerProfile(uuid, name);
+        Player onlinePlayer = Bukkit.getPlayer(uuid);
+        if (onlinePlayer != null) {
+            PlayerProfile onlineProfile = onlinePlayer.getPlayerProfile();
+            if (PlayerSkinUtil.extractAndSaveSkin(uuid, onlineProfile)) {
+                setPlayerSkullWithName(index, onlineProfile, name);
+                return;
+            }
+        }
+
+        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(uuid);
+        PlayerProfile offlineProfile = offlinePlayer.getPlayerProfile();
+        if (PlayerSkinUtil.extractAndSaveSkin(uuid, offlineProfile)) {
+            setPlayerSkullWithName(index, offlineProfile, name);
+            return;
+        }
+
+        BlockProtDatabase.SkinData cachedSkin = BlockProtDatabase.getPlayerSkin(uuid);
+        if (cachedSkin != null && setPlayerSkullWithSkinData(index, uuid, name, cachedSkin)) {
+            return;
+        }
+
+        PlayerProfile profile = createSafePlayerProfile(uuid, name);
         setPlayerSkullWithName(index, profile, name);
 
-        if (profile != null && profile.getTextures().isEmpty() && uuid.version() == 4) {
+        if (PlayerSkinUtil.isBedrockUuid(uuid)) {
+            PlayerSkinUtil.fetchGeyserSkinAsync(uuid).thenAccept(skinData -> {
+                if (skinData != null) {
+                    Bukkit.getScheduler().runTask(BlockProt.getInstance(), () -> {
+                        if (!inventory.getViewers().isEmpty()) {
+                            setPlayerSkullWithSkinData(index, uuid, name, skinData);
+                        }
+                    });
+                }
+            });
+        } else if (profile != null && uuid.version() == 4) {
             profile.update().thenAccept(updatedProfile -> {
-                URL skinUrl = updatedProfile.getTextures().getSkin();
-                if (skinUrl != null) {
-                    BlockProtDatabase.upsertPlayerSkin(uuid, skinUrl.toString());
+                if (PlayerSkinUtil.extractAndSaveSkin(uuid, updatedProfile)) {
                     Bukkit.getScheduler().runTask(BlockProt.getInstance(), () -> {
                         if (!inventory.getViewers().isEmpty()) {
                             setPlayerSkullWithName(index, updatedProfile, name);
@@ -475,6 +505,31 @@ public abstract class BlockProtInventory implements InventoryHolder {
                 }
             });
         }
+    }
+
+    private boolean setPlayerSkullWithSkinData(
+        int index,
+        @NotNull final UUID uuid,
+        @Nullable final String displayName,
+        @NotNull final BlockProtDatabase.SkinData skinData
+    ) {
+        final var stack = new ItemStack(Material.PLAYER_HEAD, 1);
+        var meta = (SkullMeta) stack.getItemMeta();
+        if (meta == null) {
+            meta = (SkullMeta) Bukkit.getItemFactory().getItemMeta(Material.PLAYER_HEAD);
+        }
+        if (meta == null) {
+            return false;
+        }
+        if (!PlayerSkinUtil.applySkinData(meta, uuid, skinData)) {
+            return false;
+        }
+        if (displayName != null && !displayName.isEmpty()) {
+            meta.setDisplayName(displayName);
+        }
+        stack.setItemMeta(meta);
+        inventory.setItem(index, stack);
+        return true;
     }
 
     private void setPlayerSkullWithName(int index, @Nullable final PlayerProfile profile, @Nullable final String displayName) {
@@ -487,38 +542,6 @@ public abstract class BlockProtInventory implements InventoryHolder {
                 inventory.setItem(index, item);
             }
         }
-    }
-
-    private @Nullable PlayerProfile resolvePlayerProfile(@NotNull final UUID uuid, @Nullable final String name) {
-        Player onlinePlayer = Bukkit.getPlayer(uuid);
-        if (onlinePlayer != null) {
-            PlayerProfile onlineProfile = onlinePlayer.getPlayerProfile();
-            URL skinUrl = onlineProfile.getTextures().getSkin();
-            if (skinUrl != null) {
-                BlockProtDatabase.upsertPlayerSkin(uuid, skinUrl.toString());
-            }
-            return onlineProfile;
-        }
-
-        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(uuid);
-        PlayerProfile offlineProfile = offlinePlayer.getPlayerProfile();
-        URL offlineSkinUrl = offlineProfile.getTextures().getSkin();
-        if (offlineSkinUrl != null) {
-            BlockProtDatabase.upsertPlayerSkin(uuid, offlineSkinUrl.toString());
-            return offlineProfile;
-        }
-
-        String cachedSkinUrl = BlockProtDatabase.getPlayerSkinUrl(uuid);
-        PlayerProfile profile = createSafePlayerProfile(uuid, name);
-        if (profile != null && cachedSkinUrl != null) {
-            try {
-                var textures = profile.getTextures();
-                textures.setSkin(URI.create(cachedSkinUrl).toURL());
-                profile.setTextures(textures);
-            } catch (Exception ignored) {
-            }
-        }
-        return profile;
     }
 
     private @Nullable PlayerProfile createSafePlayerProfile(@NotNull final UUID uuid, @Nullable final String name) {

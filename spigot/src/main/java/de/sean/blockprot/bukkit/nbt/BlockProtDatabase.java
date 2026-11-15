@@ -96,9 +96,27 @@ public final class BlockProtDatabase {
                 "CREATE TABLE IF NOT EXISTS player_skins ("
                     + "uuid TEXT PRIMARY KEY,"
                     + "skin_url TEXT NOT NULL,"
+                    + "skin_model TEXT,"
+                    + "texture_value TEXT,"
+                    + "texture_signature TEXT,"
                     + "updated_at INTEGER NOT NULL"
                     + ");"
             );
+            ensureColumnExists(stmt, "player_skins", "skin_model", "TEXT");
+            ensureColumnExists(stmt, "player_skins", "texture_value", "TEXT");
+            ensureColumnExists(stmt, "player_skins", "texture_signature", "TEXT");
+        }
+    }
+
+    private static void ensureColumnExists(
+        @NotNull final Statement stmt,
+        @NotNull final String table,
+        @NotNull final String column,
+        @NotNull final String definition
+    ) {
+        try {
+            stmt.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition + ";");
+        } catch (SQLException ignored) {
         }
     }
 
@@ -207,37 +225,77 @@ public final class BlockProtDatabase {
         return 0;
     }
 
+    public record SkinData(
+        @Nullable String skinUrl,
+        @Nullable String skinModel,
+        @Nullable String textureValue,
+        @Nullable String textureSignature
+    ) {}
+
     public static synchronized void upsertPlayerSkin(@NotNull final UUID uuid, @NotNull final String skinUrl) {
-        if (connection == null || skinUrl.isEmpty()) {
+        upsertPlayerSkin(uuid, skinUrl, null, null, null);
+    }
+
+    public static synchronized void upsertPlayerSkin(
+        @NotNull final UUID uuid,
+        @Nullable final String skinUrl,
+        @Nullable final String skinModel,
+        @Nullable final String textureValue,
+        @Nullable final String textureSignature
+    ) {
+        if (connection == null) {
             return;
         }
-        final String sql = "INSERT INTO player_skins (uuid, skin_url, updated_at) VALUES (?, ?, ?) "
-            + "ON CONFLICT(uuid) DO UPDATE SET skin_url = excluded.skin_url, updated_at = excluded.updated_at;";
+        final String safeUrl = skinUrl == null ? "" : skinUrl;
+        if (safeUrl.isEmpty() && (textureValue == null || textureValue.isEmpty())) {
+            return;
+        }
+        final String sql = "INSERT INTO player_skins (uuid, skin_url, skin_model, texture_value, texture_signature, updated_at) "
+            + "VALUES (?, ?, ?, ?, ?, ?) "
+            + "ON CONFLICT(uuid) DO UPDATE SET "
+            + "skin_url = COALESCE(NULLIF(excluded.skin_url, ''), player_skins.skin_url), "
+            + "skin_model = COALESCE(excluded.skin_model, player_skins.skin_model), "
+            + "texture_value = COALESCE(excluded.texture_value, player_skins.texture_value), "
+            + "texture_signature = COALESCE(excluded.texture_signature, player_skins.texture_signature), "
+            + "updated_at = excluded.updated_at;";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, uuid.toString());
-            ps.setString(2, skinUrl);
-            ps.setLong(3, System.currentTimeMillis());
+            ps.setString(2, safeUrl);
+            ps.setString(3, skinModel);
+            ps.setString(4, textureValue);
+            ps.setString(5, textureSignature);
+            ps.setLong(6, System.currentTimeMillis());
             ps.executeUpdate();
         } catch (SQLException e) {
             BlockProt.getInstance().getLogger().warning("Failed to upsert player skin in SQLite: " + e.getMessage());
         }
     }
 
-    public static synchronized @Nullable String getPlayerSkinUrl(@NotNull final UUID uuid) {
+    public static synchronized @Nullable SkinData getPlayerSkin(@NotNull final UUID uuid) {
         if (connection == null) {
             return null;
         }
-        final String sql = "SELECT skin_url FROM player_skins WHERE uuid = ?;";
+        final String sql = "SELECT skin_url, skin_model, texture_value, texture_signature FROM player_skins WHERE uuid = ?;";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, uuid.toString());
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return rs.getString("skin_url");
+                    return new SkinData(
+                        rs.getString("skin_url"),
+                        rs.getString("skin_model"),
+                        rs.getString("texture_value"),
+                        rs.getString("texture_signature")
+                    );
                 }
             }
         } catch (SQLException e) {
             BlockProt.getInstance().getLogger().warning("Failed to query player skin from SQLite: " + e.getMessage());
         }
         return null;
+    }
+
+    public static synchronized @Nullable String getPlayerSkinUrl(@NotNull final UUID uuid) {
+        SkinData data = getPlayerSkin(uuid);
+        return data == null || data.skinUrl() == null || data.skinUrl().isEmpty() ? null : data.skinUrl();
     }
 }
