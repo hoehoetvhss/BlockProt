@@ -58,10 +58,10 @@ lock_hint_cooldown_in_seconds: 10
 
 # This defines the minimum similarity percentage that a player name
 # can have to the friend search query at which it still shows up. By
-# default, this is 0.3, meaning only names that are less than 30% similar
+# default, this is 0.3, meaning only names that are less than 10% similar
 # are shown in the friend search. To determine similarity, the levenshtein
 # algorithm is used.
-friend_search_similarity: 0.5
+friend_search_similarity: 0.3
 
 # If desired, you can disable the friends functionality entirely. This will
 # no longer allow players to give other players access to their blocks, and
