@@ -63,11 +63,17 @@ public class FriendSearchHistoryInventory extends BlockProtInventory {
             case BLACK_STAINED_GLASS_PANE -> closeAndOpen(player, new FriendManageInventory().fill(player));
             case PLAYER_HEAD, SKELETON_SKULL -> {
                 final var meta = (SkullMeta) item.getItemMeta();
-                if (meta != null) {
-                    final var id = meta.getOwningPlayer().getUniqueId();
-                    modifyFriendsForAction(player, id, FriendModifyAction.ADD_FRIEND);
-                    closeAndOpen(player, new FriendManageInventory().fill(player));
+                final UUID id;
+                final int slot = event.getSlot();
+                if (slot >= 0 && slot < state.friendResultCache.size()) {
+                    id = state.friendResultCache.get(slot);
+                } else if (meta != null && meta.getOwningPlayer() != null) {
+                    id = meta.getOwningPlayer().getUniqueId();
+                } else {
+                    break;
                 }
+                modifyFriendsForAction(player, id, FriendModifyAction.ADD_FRIEND);
+                closeAndOpen(player, new FriendManageInventory().fill(player));
             }
             default -> closeAndOpen(player, null);
         }

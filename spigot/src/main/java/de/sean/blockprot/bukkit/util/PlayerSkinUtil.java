@@ -26,6 +26,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.profile.PlayerProfile;
 import org.bukkit.profile.PlayerTextures;
+import org.enginehub.squirrelid.Profile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -33,9 +34,11 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
@@ -210,5 +213,42 @@ public final class PlayerSkinUtil {
                 return null;
             }
         });
+    }
+
+    public static @Nullable Profile findBedrockProfileByName(@NotNull final String query) {
+        final String trimmed = query.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        final boolean hasDotPrefix = trimmed.startsWith(".");
+        final String gamertag = hasDotPrefix ? trimmed.substring(1) : trimmed;
+        if (gamertag.length() < 3 || gamertag.length() > 16) {
+            return null;
+        }
+        try {
+            final String encoded = URLEncoder.encode(gamertag, StandardCharsets.UTF_8).replace("+", "%20");
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api.geysermc.org/v2/xbox/xuid/" + encoded))
+                .timeout(Duration.ofSeconds(5))
+                .GET()
+                .build();
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200 || response.body() == null || response.body().isEmpty()) {
+                return null;
+            }
+            JsonObject json = JsonParser.parseString(response.body()).getAsJsonObject();
+            if (!json.has("xuid") || json.get("xuid").isJsonNull()) {
+                return null;
+            }
+            long xuid = json.get("xuid").getAsLong();
+            if (xuid == 0L) {
+                return null;
+            }
+            UUID uuid = new UUID(0L, xuid);
+            String displayName = hasDotPrefix ? trimmed : "." + gamertag;
+            return new Profile(uuid, displayName);
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 }

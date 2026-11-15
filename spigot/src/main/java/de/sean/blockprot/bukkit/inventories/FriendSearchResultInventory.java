@@ -23,6 +23,7 @@ import de.sean.blockprot.bukkit.TranslationKey;
 import de.sean.blockprot.bukkit.Translator;
 import de.sean.blockprot.bukkit.integrations.PluginIntegration;
 import de.sean.blockprot.bukkit.nbt.PlayerSettingsHandler;
+import de.sean.blockprot.bukkit.util.PlayerSkinUtil;
 import de.sean.blockprot.nbt.FriendModifyAction;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.bukkit.Bukkit;
@@ -40,7 +41,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class FriendSearchResultInventory extends BlockProtInventory {
@@ -116,15 +120,21 @@ public class FriendSearchResultInventory extends BlockProtInventory {
                 );
             case PLAYER_HEAD, SKELETON_SKULL -> {
                 final var meta = (SkullMeta) item.getItemMeta();
-                if (meta != null) {
-                    final var id = meta.getOwningPlayer().getUniqueId();
-                    modifyFriendsForAction(player, id, FriendModifyAction.ADD_FRIEND);
-                    closeAndOpen(player, new FriendManageInventory().fill(player));
-
-                    // Update the search history
-                    PlayerSettingsHandler settingsHandler = new PlayerSettingsHandler(player);
-                    settingsHandler.addPlayerToSearchHistory(id);
+                final UUID id;
+                final int slot = event.getSlot();
+                if (slot >= 0 && slot < state.friendResultCache.size()) {
+                    id = state.friendResultCache.get(slot);
+                } else if (meta != null && meta.getOwningPlayer() != null) {
+                    id = meta.getOwningPlayer().getUniqueId();
+                } else {
+                    break;
                 }
+                modifyFriendsForAction(player, id, FriendModifyAction.ADD_FRIEND);
+                closeAndOpen(player, new FriendManageInventory().fill(player));
+
+                // Update the search history
+                PlayerSettingsHandler settingsHandler = new PlayerSettingsHandler(player);
+                settingsHandler.addPlayerToSearchHistory(id);
             }
             default -> closeAndOpen(player, null);
         }
@@ -253,10 +263,46 @@ public class FriendSearchResultInventory extends BlockProtInventory {
                             .filter(f -> PluginIntegration.filterFriendByUuidForAll(f.getUniqueId(), player, state.getBlock()));
                 }
 
-                filterStream.limit(maxResults).forEach(resultQueue::add);
+                final Map<UUID, Profile> results = new LinkedHashMap<>();
+                filterStream.limit(maxResults).forEach(p -> results.put(p.getUniqueId(), p));
+
+                final String trimmedQuery = searchQuery.trim();
+                final boolean hasExactMatch = results.values().stream()
+                    .anyMatch(p -> p.getName() != null && p.getName().equalsIgnoreCase(trimmedQuery));
+
+                if (!hasExactMatch && !trimmedQuery.isEmpty() && results.size() < maxResults) {
+                    Profile externalProfile = resolveExternalProfile(trimmedQuery);
+                    if (externalProfile != null
+                        && !externalProfile.getUniqueId().equals(player.getUniqueId())
+                        && (state.friendSearchState != InventoryState.FriendSearchState.FRIEND_SEARCH
+                            || state.getBlock() == null
+                            || PluginIntegration.filterFriendByUuidForAll(externalProfile.getUniqueId(), player, state.getBlock()))) {
+                        results.putIfAbsent(externalProfile.getUniqueId(), externalProfile);
+                    }
+                }
+
+                resultQueue.addAll(results.values());
             } catch (Exception e) {
                 BlockProt.getInstance().getLogger().warning("Failed to search and filter players during friend search: " + e.getMessage());
             }
+        }
+
+        private @Nullable Profile resolveExternalProfile(@NotNull final String query) {
+            try {
+                if (!query.startsWith(".") && query.matches("^[a-zA-Z0-9_]{3,16}$")) {
+                    Profile mojangProfile = BlockProt.getProfileService().findByName(query);
+                    if (mojangProfile != null) {
+                        return mojangProfile;
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+
+            Profile bedrockProfile = PlayerSkinUtil.findBedrockProfileByName(query);
+            if (bedrockProfile != null) {
+                BlockProt.getProfileService().put(bedrockProfile);
+            }
+            return bedrockProfile;
         }
     }
 }
