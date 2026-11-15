@@ -20,6 +20,7 @@ package de.sean.blockprot.bukkit.nbt;
 
 import de.sean.blockprot.bukkit.BlockProt;
 import de.sean.blockprot.bukkit.Permissions;
+import de.sean.blockprot.bukkit.integrations.PluginIntegration;
 import de.sean.blockprot.bukkit.nbt.stats.PlayerBlocksStatistic;
 import de.sean.blockprot.bukkit.util.BlockUtil;
 import de.sean.blockprot.nbt.FriendModifyAction;
@@ -255,6 +256,16 @@ public final class BlockNBTHandler extends FriendSupportingHandler<NBTCompound> 
             // This block is not owned by anyone, this user can claim this block
             owner = playerUuid;
             setOwner(owner);
+            new PlayerSettingsHandler(player)
+                .getFriendsStream()
+                .filter(fh -> {
+                    try {
+                        return PluginIntegration.filterFriendByUuidForAll(UUID.fromString(fh.getName()), player, block);
+                    } catch (IllegalArgumentException e) {
+                        return false;
+                    }
+                })
+                .forEach(this::addFriend);
             this.applyToOtherContainer();
             StatHandler.addBlock(player, block.getLocation());
             return new LockReturnValue(true, null);

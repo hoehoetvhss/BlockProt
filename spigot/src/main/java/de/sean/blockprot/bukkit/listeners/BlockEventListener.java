@@ -23,7 +23,6 @@ import de.sean.blockprot.bukkit.BlockProt;
 import de.sean.blockprot.bukkit.Permissions;
 import de.sean.blockprot.bukkit.Translator;
 import de.sean.blockprot.bukkit.events.BlockLockOnPlaceEvent;
-import de.sean.blockprot.bukkit.integrations.PluginIntegration;
 import de.sean.blockprot.bukkit.nbt.BlockNBTHandler;
 import de.sean.blockprot.bukkit.nbt.PlayerSettingsHandler;
 import de.sean.blockprot.bukkit.nbt.StatHandler;
@@ -54,7 +53,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;
 import java.util.Objects;
-import java.util.UUID;
 
 public class BlockEventListener implements Listener {
     private final BlockProt blockProt;
@@ -201,10 +199,6 @@ public class BlockEventListener implements Listener {
                         }
                         return;
                     }
-
-                    settingsHandler.getFriendsStream()
-                        .filter(fh -> PluginIntegration.filterFriendByUuidForAll(UUID.fromString(fh.getName()), event.getPlayer(), block))
-                        .forEach(handler::addFriend);
                 }
 
                 if (BlockProt.getDefaultConfig().disallowRedstoneOnPlace()) {
