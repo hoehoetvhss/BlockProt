@@ -6,36 +6,45 @@ on:
     paths:
       - '**.java'
       - 'gradle/**'
+      - 'gradle.properties'
       - '**.gradle'
       - '**.gradle.kts'
   pull_request:
     branches: [ master ]
     paths:
       - '**.java'
+      - 'gradle/**'
+      - 'gradle.properties'
+      - '**.gradle'
+      - '**.gradle.kts'
   workflow_dispatch:
 
 jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    # Setting any container image breaks actions/checkout@v2.
-    # container:
-    #   image: openjdk:16-jdk
     strategy:
       fail-fast: false
       matrix:
         language: [ 'java' ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@master
         with:
           fetch-depth: 1
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@main
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'adopt'
-      - uses: gradle/wrapper-validation-action@v2
+      - uses: gradle/actions/setup-gradle@main
       - name: Ensure gradlew.sh is executable
         run: chmod +x gradlew
       - name: Build project
-        run: ./gradlew compileJava
+        run: ./gradlew build
+      - name: Upload artifact
+        uses: actions/upload-artifact@main
+        with:
+          name: BlockProt
+          path: |
+            **/build/libs/*-all.jar
+            !common/**

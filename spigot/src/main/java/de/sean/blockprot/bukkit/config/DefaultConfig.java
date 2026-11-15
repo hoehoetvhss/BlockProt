@@ -102,6 +102,15 @@ public final class DefaultConfig extends BlockProtConfig {
         this.loadBlocksFromConfig();
     }
 
+    private void addKnownGoodTileEntities(@NotNull String... materialNames) {
+        for (String name : materialNames) {
+            Material material = Material.matchMaterial(name);
+            if (material != null) {
+                this.knownGoodTileEntities.add(material);
+            }
+        }
+    }
+
     private <T extends Enum<?>> void loadBlockListFromConfig(
             @NotNull String key, @NotNull final ArrayList<T> list, @NotNull final T[] enumValues, Function<T, Boolean> validateCallback) {
         List<?> configList = config.getList(key);
@@ -149,6 +158,16 @@ public final class DefaultConfig extends BlockProtConfig {
             this.knownGoodTileEntities.addAll(List.of(Material.CHERRY_SIGN, Material.CHERRY_WALL_SIGN, Material.CHERRY_HANGING_SIGN, Material.CHERRY_WALL_HANGING_SIGN));
             this.knownGoodTileEntities.addAll(List.of(Material.BAMBOO_SIGN, Material.BAMBOO_WALL_SIGN, Material.BAMBOO_HANGING_SIGN, Material.BAMBOO_WALL_HANGING_SIGN));
         }
+
+        addKnownGoodTileEntities(
+            "PALE_OAK_SIGN", "PALE_OAK_WALL_SIGN", "PALE_OAK_HANGING_SIGN", "PALE_OAK_WALL_HANGING_SIGN",
+            "POPLAR_SIGN", "POPLAR_WALL_SIGN", "POPLAR_HANGING_SIGN", "POPLAR_WALL_HANGING_SIGN",
+            "COPPER_CHEST", "EXPOSED_COPPER_CHEST", "WEATHERED_COPPER_CHEST", "OXIDIZED_COPPER_CHEST",
+            "WAXED_COPPER_CHEST", "WAXED_EXPOSED_COPPER_CHEST", "WAXED_WEATHERED_COPPER_CHEST", "WAXED_OXIDIZED_COPPER_CHEST",
+            "ACACIA_SHELF", "BAMBOO_SHELF", "BIRCH_SHELF", "CHERRY_SHELF", "CRIMSON_SHELF",
+            "DARK_OAK_SHELF", "JUNGLE_SHELF", "MANGROVE_SHELF", "OAK_SHELF", "PALE_OAK_SHELF",
+            "POPLAR_SHELF", "SPRUCE_SHELF", "WARPED_SHELF"
+        );
 
         loadBlockListFromConfig("lockable_tile_entities", this.lockableTileEntities, Material.values(),
                 knownGoodTileEntities::contains);

@@ -28,6 +28,7 @@ import de.tr7zw.changeme.nbtapi.*;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
+import org.bukkit.block.Chest;
 import org.bukkit.entity.Player;
 import org.bukkit.permissions.PermissionAttachmentInfo;
 import org.jetbrains.annotations.NotNull;
@@ -343,7 +344,7 @@ public final class BlockNBTHandler extends FriendSupportingHandler<NBTCompound> 
             } else {
                 orElse.accept(otherDoorHandler);
             }
-        } else if (this.block.getType() == Material.CHEST || this.block.getType() == Material.TRAPPED_CHEST) {
+        } else if (this.block.getState() instanceof Chest) {
             final BlockState doubleChestState = BlockUtil.getDoubleChest(this.block);
             if (doubleChestState != null) {
                 final BlockNBTHandler doubleChestHandler = new BlockNBTHandler(doubleChestState.getBlock());

@@ -93,7 +93,7 @@ tasks.register("github") {
         // Get the output JARs for each subproject.
         val files = mutableListOf<File?>()
         subprojects.filter { it.name != "common" }.forEach {
-            val dir = "${it.buildDir}/libs/"
+            val dir = "${it.layout.buildDirectory.get().asFile}/libs/"
             files.add(file(dir).listFiles()?.last { file ->
                 file.nameWithoutExtension.endsWith("all")
             })

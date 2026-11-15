@@ -39,6 +39,7 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
+import org.bukkit.block.Chest;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -188,7 +189,7 @@ public class BlockEventListener implements Listener {
             Bukkit.getScheduler().runTaskLater(
                 this.blockProt,
                 () -> {
-                    if (block.getType() == Material.CHEST || block.getType() == Material.TRAPPED_CHEST) {
+                    if (block.getState() instanceof Chest) {
                         // We cannot use BlockNBTHandler#applyToOtherContainer, because we want the
                         // data to be copied to this new chest, instead of the old chest being effectively
                         // cleared.
