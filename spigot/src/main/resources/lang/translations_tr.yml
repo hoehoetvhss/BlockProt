@@ -14,6 +14,8 @@ inventories:
   lock_on_place: Otomatik olarak kilitle
   copy_configuration: Konfigürasyonu kopyala
   paste_configuration: Konfigürasyonu yapıştır
+  apply_configuration_to_all: Yapılandırmayı tüm bloklara uygula
+  update_all_configurations: Tüm blok yapılandırmalarını güncelle
   set_block_name: Blok ismini ayarla
   inspect_contents: İçerikleri incele
   redstone:
@@ -58,6 +60,11 @@ messages:
   lock_hint: "§6Sandıklar, fırınlar ve daha birçok bloku eğilip ve sağ tıklayarak
     koruyabilirsiniz! Aynı zamanda /blockprot yazarak kendi isteklerinize göre ayarları
     değiştirebilirsiniz."
+  hint_hover_text: "Bir BlockProt menüsü açın veya ipuçlarını devre dışı bırakmak için buraya tıklayın."
+  disabled_hints: "§6İpuçları devre dışı bırakıldı!"
+  configuration_applied_to_all: "%d blok için yapılandırma güncellendi."
+  admin_unlocked_all: "%2$s için %1$d blok kilidi açıldı."
+  no_protected_blocks: "Korunan blok bulunamadı."
 integrations:
   lands:
     protect_containers_flag_name: Konteynerleri (sandık, fırın vb.) koru. (BlockProt)

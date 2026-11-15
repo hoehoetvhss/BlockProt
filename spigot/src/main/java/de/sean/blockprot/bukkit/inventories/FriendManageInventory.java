@@ -219,7 +219,7 @@ public final class FriendManageInventory extends BlockProtInventory {
                         final var index = Iterables.indexOf(state.friendResultCache, f -> f.equals(profile.getUniqueId()));
 
                         if (!profile.getUniqueId().equals(FriendSupportingHandler.publicUuid)) {
-                            setPlayerSkull(index, Bukkit.getServer().createPlayerProfile(profile.getUniqueId(), profile.getName()));
+                            setPlayerSkull(index, profile.getUniqueId(), profile.getName());
                         }
                         i++;
                     }

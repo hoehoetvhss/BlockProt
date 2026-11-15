@@ -14,6 +14,8 @@ inventories:
   lock_on_place: Trancar automaticamente
   copy_configuration: Copiar configuração
   paste_configuration: Colar configuração
+  apply_configuration_to_all: Aplicar configuração a todos os blocos
+  update_all_configurations: Atualizar todas as configurações de blocos
   set_block_name: Definir nome do bloco
   inspect_contents: Inspecione o conteúdo
   redstone:
@@ -61,6 +63,9 @@ messages:
     desativar essas dicas.)\n"
   hint_hover_text: Abra um menu do BlockProt ou clique aqui para desativar as dicas.
   disabled_hints: "§6Dicas desativadas!"
+  configuration_applied_to_all: "Configuração atualizada para %d bloco(s)."
+  admin_unlocked_all: "Desbloqueado(s) %d bloco(s) para %s."
+  no_protected_blocks: "Nenhum bloco protegido encontrado."
 integrations:
   lands:
     protect_containers_flag_name: Proteger contêineres (BlockProt)

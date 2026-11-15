@@ -1,5 +1,7 @@
 ---
 locale: ru
+enabled: Включено
+disabled: Отключено
 inventories:
   back: Назад
   last_page: Последняя страница
@@ -12,10 +14,15 @@ inventories:
   lock_on_place: Запирать автоматически
   copy_configuration: Скопировать настройки
   paste_configuration: Вставить настройки
+  apply_configuration_to_all: Применить настройки ко всем блокам
+  update_all_configurations: Обновить настройки всех блоков
   set_block_name: Установить имя блока
   inspect_contents: Осмотрить содержимое
   redstone:
     settings: Редстоун настройки
+    redstone_protection: Защита от редстоуна
+    piston_protection: Защита от поршней
+    hopper_protection: Защита от воронок
     enable_all: Включить всё
     disable_all: Отключить всё
   friends:
@@ -54,6 +61,11 @@ messages:
   lock_hint: "&6Вы можете запереть свои блоки, приседая  и нажимая одновременно правую
     кнопку мыши по сундукам, печкам и другим предметам! Кроме того, проверьте настройки
     /blockprot, чтобы настроить их по своему вкусу."
+  hint_hover_text: "Откройте меню BlockProt или нажмите здесь, чтобы отключить подсказки."
+  disabled_hints: "§6Подсказки отключены!"
+  configuration_applied_to_all: "Настройки обновлены для %d блок(ов)."
+  admin_unlocked_all: "Разблокировано %d блок(ов) игрока %s."
+  no_protected_blocks: "Защищённые блоки не найдены."
 integrations:
   lands:
     protect_containers_flag_name: Запереть хранилища (BlockProt)

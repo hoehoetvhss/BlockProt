@@ -22,6 +22,8 @@ inventories:
   lock_on_place: "Automaticky uzamykať"
   copy_configuration: "Kopírovať nastavenie"
   paste_configuration: "Použiť skopírované nastavenie"
+  apply_configuration_to_all: "Použiť nastavenie na všetky bloky"
+  update_all_configurations: "Aktualizovať nastavenia všetkých blokov"
   set_block_name: "Nastav meno bloku"
   inspect_contents: "Skontroluj obsah"
   redstone:
@@ -70,6 +72,9 @@ messages:
     (Klikni sem pre zrušenie tejto nápovedy.)
   hint_hover_text: "Otvor menu pre plugin BlockProt, alebo klikni sem pre zrušenie nápovedy."
   disabled_hints: "§6Zrušené nápovedy!"
+  configuration_applied_to_all: "Nastavenie bolo aktualizované pre %d blok(ov)."
+  admin_unlocked_all: "Odomknutých %d blok(ov) pre hráča %s."
+  no_protected_blocks: "Neboli nájdené žiadne chránené bloky."
 
 integrations:
   lands:

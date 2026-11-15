@@ -22,6 +22,7 @@ import de.sean.blockprot.bukkit.BlockProt;
 import de.sean.blockprot.bukkit.TranslationKey;
 import de.sean.blockprot.bukkit.Translator;
 import de.sean.blockprot.bukkit.nbt.BlockNBTHandler;
+import de.sean.blockprot.bukkit.nbt.BlockProtDatabase;
 import de.sean.blockprot.bukkit.nbt.FriendSupportingHandler;
 import de.sean.blockprot.bukkit.nbt.PlayerSettingsHandler;
 import de.sean.blockprot.nbt.FriendModifyAction;
@@ -46,6 +47,8 @@ import org.bukkit.profile.PlayerProfile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.net.URI;
+import java.net.URL;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -453,6 +456,77 @@ public abstract class BlockProtInventory implements InventoryHolder {
 
         stack.setItemMeta(meta);
         inventory.setItem(index, stack);
+    }
+
+    public void setPlayerSkull(int index, @NotNull final UUID uuid, @Nullable final String name) {
+        PlayerProfile profile = resolvePlayerProfile(uuid, name);
+        setPlayerSkullWithName(index, profile, name);
+
+        if (profile != null && profile.getTextures().isEmpty() && uuid.version() == 4) {
+            profile.update().thenAccept(updatedProfile -> {
+                URL skinUrl = updatedProfile.getTextures().getSkin();
+                if (skinUrl != null) {
+                    BlockProtDatabase.upsertPlayerSkin(uuid, skinUrl.toString());
+                    Bukkit.getScheduler().runTask(BlockProt.getInstance(), () -> {
+                        if (!inventory.getViewers().isEmpty()) {
+                            setPlayerSkullWithName(index, updatedProfile, name);
+                        }
+                    });
+                }
+            });
+        }
+    }
+
+    private void setPlayerSkullWithName(int index, @Nullable final PlayerProfile profile, @Nullable final String displayName) {
+        setPlayerSkull(index, profile);
+        if (displayName != null && !displayName.isEmpty()) {
+            ItemStack item = inventory.getItem(index);
+            if (item != null && item.getItemMeta() instanceof SkullMeta meta) {
+                meta.setDisplayName(displayName);
+                item.setItemMeta(meta);
+                inventory.setItem(index, item);
+            }
+        }
+    }
+
+    private @Nullable PlayerProfile resolvePlayerProfile(@NotNull final UUID uuid, @Nullable final String name) {
+        Player onlinePlayer = Bukkit.getPlayer(uuid);
+        if (onlinePlayer != null) {
+            PlayerProfile onlineProfile = onlinePlayer.getPlayerProfile();
+            URL skinUrl = onlineProfile.getTextures().getSkin();
+            if (skinUrl != null) {
+                BlockProtDatabase.upsertPlayerSkin(uuid, skinUrl.toString());
+            }
+            return onlineProfile;
+        }
+
+        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(uuid);
+        PlayerProfile offlineProfile = offlinePlayer.getPlayerProfile();
+        URL offlineSkinUrl = offlineProfile.getTextures().getSkin();
+        if (offlineSkinUrl != null) {
+            BlockProtDatabase.upsertPlayerSkin(uuid, offlineSkinUrl.toString());
+            return offlineProfile;
+        }
+
+        String cachedSkinUrl = BlockProtDatabase.getPlayerSkinUrl(uuid);
+        PlayerProfile profile = createSafePlayerProfile(uuid, name);
+        if (profile != null && cachedSkinUrl != null) {
+            try {
+                var textures = profile.getTextures();
+                textures.setSkin(URI.create(cachedSkinUrl).toURL());
+                profile.setTextures(textures);
+            } catch (Exception ignored) {
+            }
+        }
+        return profile;
+    }
+
+    private @Nullable PlayerProfile createSafePlayerProfile(@NotNull final UUID uuid, @Nullable final String name) {
+        try {
+            return Bukkit.getServer().createPlayerProfile(uuid, name);
+        } catch (IllegalArgumentException e) {
+            return Bukkit.getServer().createPlayerProfile(uuid, null);
+        }
     }
 
     /**

@@ -14,6 +14,8 @@ inventories:
   lock_on_place: 在放置時自動上鎖
   copy_configuration: 複製配置
   paste_configuration: 貼上配置
+  apply_configuration_to_all: 將配置套用至所有方塊
+  update_all_configurations: 更新所有方塊配置
   set_block_name: 設置方塊名稱
   inspect_contents: 檢查內容
   redstone:
@@ -58,6 +60,9 @@ messages:
   lock_hint: "§6您可以通過蹲下並右鍵點擊您的箱子、熔爐等來保護您的方塊!另外，請檢查 /blockprot settings 以根據您的喜好進行配置。(點擊此處禁用這些提示)\n"
   hint_hover_text: 從 BlockProt 打開選單或點擊此處禁用提示
   disabled_hints: "§6已關閉提示!"
+  configuration_applied_to_all: "已更新 %d 個方塊的配置。"
+  admin_unlocked_all: "已為 %2$s 解鎖 %1$d 個方塊。"
+  no_protected_blocks: "未找到受保護的方塊。"
 integrations:
   lands:
     protect_containers_flag_name: 保護方塊(BlockProt)

@@ -133,7 +133,7 @@ public class BlockInfoInventory extends BlockProtInventory {
             try {
                 final var profile = BlockProt.getProfileService().findByUuid(UUID.fromString(owner));
                 assert profile != null;
-                setPlayerSkull(0, Bukkit.getServer().createPlayerProfile(profile.getUniqueId(), profile.getName()));
+                setPlayerSkull(0, profile.getUniqueId(), profile.getName());
             } catch (Exception e) {
                 BlockProt.getInstance().getLogger().warning("Failed to update PlayerProfile: " + e.getMessage());
             }
@@ -188,7 +188,7 @@ public class BlockInfoInventory extends BlockProtInventory {
                         final var profile = profiles.get(i);
 
                         if (!profile.getUniqueId().equals(FriendSupportingHandler.publicUuid)) {
-                            setPlayerSkull(InventoryConstants.singleLine + offset + i, Bukkit.getServer().createPlayerProfile(profile.getUniqueId(), profile.getName()));
+                            setPlayerSkull(InventoryConstants.singleLine + offset + i, profile.getUniqueId(), profile.getName());
                         }
                         i++;
                     }

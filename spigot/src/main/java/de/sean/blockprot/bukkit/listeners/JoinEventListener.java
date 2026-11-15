@@ -19,6 +19,7 @@
 package de.sean.blockprot.bukkit.listeners;
 
 import de.sean.blockprot.bukkit.BlockProt;
+import de.sean.blockprot.bukkit.nbt.BlockProtDatabase;
 import de.sean.blockprot.bukkit.nbt.PlayerSettingsHandler;
 import de.sean.blockprot.bukkit.tasks.UpdateChecker;
 import org.bukkit.Bukkit;
@@ -26,7 +27,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.enginehub.squirrelid.Profile;
 
+import java.net.URL;
 import java.util.Collections;
 
 public class JoinEventListener implements Listener {
@@ -44,6 +47,20 @@ public class JoinEventListener implements Listener {
         }
         if (BlockProt.getDefaultConfig().publicIsFriendByDefault() && !player.hasPlayedBefore()) {
             new PlayerSettingsHandler(player).addEveryoneAsFriend();
+        }
+        cachePlayerProfileAndSkin(player);
+        Bukkit.getScheduler().runTaskLater(BlockProt.getInstance(), () -> {
+            if (player.isOnline()) {
+                cachePlayerProfileAndSkin(player);
+            }
+        }, 40L);
+    }
+
+    private void cachePlayerProfileAndSkin(Player player) {
+        BlockProt.getProfileCache().put(new Profile(player.getUniqueId(), player.getName()));
+        URL skinUrl = player.getPlayerProfile().getTextures().getSkin();
+        if (skinUrl != null) {
+            BlockProtDatabase.upsertPlayerSkin(player.getUniqueId(), skinUrl.toString());
         }
     }
 }

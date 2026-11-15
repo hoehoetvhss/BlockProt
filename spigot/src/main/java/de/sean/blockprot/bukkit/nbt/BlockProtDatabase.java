@@ -35,6 +35,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 public final class BlockProtDatabase {
     private static @Nullable Connection connection;
@@ -91,6 +92,13 @@ public final class BlockProtDatabase {
                     + ");"
             );
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_locked_blocks_owner ON locked_blocks(owner);");
+            stmt.execute(
+                "CREATE TABLE IF NOT EXISTS player_skins ("
+                    + "uuid TEXT PRIMARY KEY,"
+                    + "skin_url TEXT NOT NULL,"
+                    + "updated_at INTEGER NOT NULL"
+                    + ");"
+            );
         }
     }
 
@@ -197,5 +205,39 @@ public final class BlockProtDatabase {
             BlockProt.getInstance().getLogger().warning("Failed to query total locked block count from SQLite: " + e.getMessage());
         }
         return 0;
+    }
+
+    public static synchronized void upsertPlayerSkin(@NotNull final UUID uuid, @NotNull final String skinUrl) {
+        if (connection == null || skinUrl.isEmpty()) {
+            return;
+        }
+        final String sql = "INSERT INTO player_skins (uuid, skin_url, updated_at) VALUES (?, ?, ?) "
+            + "ON CONFLICT(uuid) DO UPDATE SET skin_url = excluded.skin_url, updated_at = excluded.updated_at;";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, uuid.toString());
+            ps.setString(2, skinUrl);
+            ps.setLong(3, System.currentTimeMillis());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            BlockProt.getInstance().getLogger().warning("Failed to upsert player skin in SQLite: " + e.getMessage());
+        }
+    }
+
+    public static synchronized @Nullable String getPlayerSkinUrl(@NotNull final UUID uuid) {
+        if (connection == null) {
+            return null;
+        }
+        final String sql = "SELECT skin_url FROM player_skins WHERE uuid = ?;";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, uuid.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("skin_url");
+                }
+            }
+        } catch (SQLException e) {
+            BlockProt.getInstance().getLogger().warning("Failed to query player skin from SQLite: " + e.getMessage());
+        }
+        return null;
     }
 }

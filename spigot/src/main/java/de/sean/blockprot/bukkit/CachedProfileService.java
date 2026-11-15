@@ -21,6 +21,8 @@ package de.sean.blockprot.bukkit;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.enginehub.squirrelid.Profile;
 import org.enginehub.squirrelid.cache.ProfileCache;
 import org.enginehub.squirrelid.resolver.*;
@@ -85,11 +87,16 @@ public class CachedProfileService implements ProfileService, ProfileCache {
         if (profile == null) {
             try {
                 profile = this.resolver.findByUuid(uuid);
-                if (profile != null) {
-                    put(profile);
+            } catch (Exception ignored) {
+            }
+            if (profile == null) {
+                OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(uuid);
+                if (offlinePlayer.getName() != null) {
+                    profile = new Profile(uuid, offlinePlayer.getName());
                 }
-            } catch (Exception e) {
-                return profile;
+            }
+            if (profile != null) {
+                put(profile);
             }
         }
         return profile;
@@ -98,44 +105,37 @@ public class CachedProfileService implements ProfileService, ProfileCache {
     @Override
     public ImmutableList<Profile> findAllByUuid(Iterable<UUID> uuids) {
         final var map = getAllPresent(uuids);
-
-        if (map.isEmpty()) {
-            final var profiles = new ArrayList<Profile>();
-            for (final var uuid : uuids) {
-                try {
-                    final var profile = this.resolver.findByUuid(uuid);
-                    put(profile);
-                    profiles.add(profile);
-                } catch (Exception e) {
-                    return ImmutableList.copyOf(profiles);
-                }
-            }
-            return ImmutableList.copyOf(profiles);
-        }
-
-        // The returned map doesn't include the UUIDs which were not found in the cache.
+        final var profiles = new ArrayList<Profile>();
         final var lookup = new ArrayList<UUID>();
+
         for (final var uuid : uuids) {
-            if (!map.containsKey(uuid) || map.get(uuid) == null) {
+            final var cached = map.get(uuid);
+            if (cached != null) {
+                profiles.add(cached);
+            } else {
                 lookup.add(uuid);
             }
         }
 
-        if (!lookup.isEmpty()) {
-            final var profiles = new ArrayList<>(map.values());
-            for (final var uuid : lookup) {
-                try {
-                    final var profile = this.resolver.findByUuid(uuid);
-                    put(profile);
-                    profiles.add(profile);
-                } catch (Exception e) {
-                    return ImmutableList.copyOf(profiles);
+        for (final var uuid : lookup) {
+            Profile profile = null;
+            try {
+                profile = this.resolver.findByUuid(uuid);
+            } catch (Exception ignored) {
+            }
+            if (profile == null) {
+                OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(uuid);
+                if (offlinePlayer.getName() != null) {
+                    profile = new Profile(uuid, offlinePlayer.getName());
                 }
             }
-            return ImmutableList.copyOf(profiles);
+            if (profile != null) {
+                put(profile);
+                profiles.add(profile);
+            }
         }
 
-        return map.values().asList();
+        return ImmutableList.copyOf(profiles);
     }
 
     @Override
