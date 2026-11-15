@@ -1,5 +1,8 @@
 # BlockProt Config
 
+# Internal config schema version used for automatic migration on plugin updates.
+config_version: 2
+
 # Load a language file from the plugins/BlockProt/ directory.
 # You can create your own language files and edit existing ones.
 # Translations can be missing from this file and will instead be loaded

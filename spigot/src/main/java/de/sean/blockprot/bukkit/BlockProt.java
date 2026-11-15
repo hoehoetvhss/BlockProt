@@ -19,6 +19,7 @@
 package de.sean.blockprot.bukkit;
 
 import de.sean.blockprot.bukkit.commands.BlockProtCommand;
+import de.sean.blockprot.bukkit.config.ConfigMigrator;
 import de.sean.blockprot.bukkit.config.DefaultConfig;
 import de.sean.blockprot.bukkit.integrations.*;
 import de.sean.blockprot.bukkit.listeners.*;
@@ -231,6 +232,7 @@ public final class BlockProt extends JavaPlugin {
      * @since 1.0.0
      */
     public void reloadConfigAndTranslations() {
+        ConfigMigrator.migrateMainConfig(this);
         this.reloadConfig();
         defaultConfig = new DefaultConfig(this.getConfig());
 
@@ -238,11 +240,12 @@ public final class BlockProt extends JavaPlugin {
         Translator.DEFAULT_FALLBACK = defaultConfig.getTranslationFallbackString();
 
         final String langFolder = "lang/";
+        final boolean replaceTranslations = defaultConfig.shouldReplaceTranslations();
 
         // Ensure that all translation files have been saved properly.
         for (String resource : Translator.DEFAULT_TRANSLATION_FILES) {
-            if ((new File(this.getDataFolder(), langFolder + resource)).exists()) continue;
-            this.saveResource(langFolder + resource, defaultConfig.shouldReplaceTranslations());
+            if (!replaceTranslations && (new File(this.getDataFolder(), langFolder + resource)).exists()) continue;
+            this.saveResource(langFolder + resource, replaceTranslations);
         }
 
         // Get the default language file. We do not use the English translation in the plugin's
@@ -254,14 +257,24 @@ public final class BlockProt extends JavaPlugin {
             // The JAR has been modified or is corrupt and the translation files are missing.
             throw new RuntimeException("Failed to get default language file. Possibly corrupt plugin?");
         }
-        YamlConfiguration defaultLanguageConfig = YamlConfiguration.loadConfiguration(new BufferedReader(new InputStreamReader(defaultLanguageStream)));
+        YamlConfiguration defaultLanguageConfig = YamlConfiguration.loadConfiguration(
+            new BufferedReader(new InputStreamReader(defaultLanguageStream, java.nio.charset.StandardCharsets.UTF_8))
+        );
 
         // Get the wanted language file and load its config.
         // Load the configurations and initialize the Translator.
         final String fileName = defaultConfig.getLanguageFile() == null
             ? defaultLanguageFile
             : defaultConfig.getLanguageFile();
-        YamlConfiguration wantedConfig = saveAndLoadConfigFile(langFolder, fileName, BlockProt.defaultConfig.shouldReplaceTranslations());
+        if (!replaceTranslations) {
+            ConfigMigrator.migrateTranslationFile(
+                this,
+                new File(this.getDataFolder(), langFolder + fileName),
+                langFolder + fileName,
+                defaultLanguageConfig
+            );
+        }
+        YamlConfiguration wantedConfig = saveAndLoadConfigFile(langFolder, fileName, replaceTranslations);
         Translator.loadFromConfigs(defaultLanguageConfig, wantedConfig);
 
         for (PluginIntegration integration : integrations) {
@@ -303,14 +316,14 @@ public final class BlockProt extends JavaPlugin {
     public YamlConfiguration saveAndLoadConfigFile(String folder, String name, boolean replace) {
         final String path = folder + (folder.endsWith("/") ? "" : "/") + name;
         File file = new File(this.getDataFolder(), path);
-        if (!file.exists()) {
+        if (!file.exists() || replace) {
             try {
                 this.saveResource(path, replace);
             } catch (IllegalArgumentException e) {
-                // The resource doesn't exist in the JAR. Therefore, the config file doesn't
-                // exist, and we should return an empty config.
-                getLogger().warning("The configured language file does not exist: " + name);
-                return new YamlConfiguration();
+                if (!file.exists()) {
+                    getLogger().warning("The configured language file does not exist: " + name);
+                    return new YamlConfiguration();
+                }
             }
         }
         return YamlConfiguration.loadConfiguration(file);
