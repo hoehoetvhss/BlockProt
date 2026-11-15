@@ -129,6 +129,7 @@ public final class FriendManageInventory extends BlockProtInventory {
                     player,
                     (handler) -> {
                         handler.addEveryoneAsFriend();
+                        handler.syncToDatabase();
                         return new LockReturnValue(true, null);
                     },
                     FriendSupportingHandler::addEveryoneAsFriend
