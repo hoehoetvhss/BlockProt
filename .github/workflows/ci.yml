@@ -35,7 +35,7 @@ jobs:
         uses: actions/setup-java@main
         with:
           java-version: '21'
-          distribution: 'adopt'
+          distribution: 'temurin'
       - uses: gradle/actions/setup-gradle@main
       - name: Ensure gradlew.sh is executable
         run: chmod +x gradlew
