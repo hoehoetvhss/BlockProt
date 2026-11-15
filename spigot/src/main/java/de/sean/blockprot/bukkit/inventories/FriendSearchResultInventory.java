@@ -170,6 +170,8 @@ public class FriendSearchResultInventory extends BlockProtInventory {
         InventoryState state = InventoryState.get(player.getUniqueId());
         if (state == null) return inventory;
 
+        state.friendResultCache.clear();
+
         updateTask = Bukkit.getScheduler().runTaskTimer(BlockProt.getInstance(), new ResultUpdateTask(state), 0, 1);
         loadTask = Bukkit.getScheduler().runTaskAsynchronously(BlockProt.getInstance(), new AsyncResultLoadTask(state, player, searchQuery));
 
