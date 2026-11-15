@@ -300,7 +300,7 @@ public class FriendSearchResultInventory extends BlockProtInventory {
 
             Profile bedrockProfile = PlayerSkinUtil.findBedrockProfileByName(query);
             if (bedrockProfile != null) {
-                BlockProt.getProfileService().put(bedrockProfile);
+                BlockProt.getProfileCache().put(bedrockProfile);
             }
             return bedrockProfile;
         }
