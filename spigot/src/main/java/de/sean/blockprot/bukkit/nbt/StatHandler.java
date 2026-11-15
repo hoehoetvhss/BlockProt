@@ -19,13 +19,16 @@
 package de.sean.blockprot.bukkit.nbt;
 
 import de.sean.blockprot.bukkit.BlockProt;
+import de.sean.blockprot.bukkit.integrations.PluginIntegration;
 import de.sean.blockprot.bukkit.nbt.stats.BlockCountStatistic;
 import de.sean.blockprot.bukkit.nbt.stats.BukkitStatistic;
+import de.sean.blockprot.bukkit.nbt.stats.LocationListEntry;
 import de.sean.blockprot.bukkit.nbt.stats.PlayerBlocksStatistic;
 import de.sean.blockprot.bukkit.tasks.StatisticFileSaveTask;
 import de.sean.blockprot.bukkit.util.BlockUtil;
 import de.sean.blockprot.nbt.stats.StatisticType;
 import de.tr7zw.changeme.nbtapi.NBTCompound;
+import de.tr7zw.changeme.nbtapi.NBTContainer;
 import de.tr7zw.changeme.nbtapi.NBTFile;
 import de.tr7zw.changeme.nbtapi.NBTType;
 import de.tr7zw.changeme.nbtapi.NbtApiException;
@@ -42,7 +45,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 /**
@@ -213,19 +218,90 @@ public final class StatHandler extends NBTHandler<NBTCompound> {
      * @since 1.0.3
      */
     public static void removeContainer(@NotNull final Player player, @NotNull final Block block) {
-        /* Remove the other half of the door from the statistics as well */
+        removeContainer(player.getUniqueId().toString(), block);
+    }
+
+    public static void removeContainer(@NotNull final String playerUuid, @NotNull final Block block) {
         if (BlockProt.getDefaultConfig().isLockableDoor(block.getType())) {
             final Block otherDoor = BlockUtil.getOtherDoorHalf(block.getState());
             if (otherDoor != null)
-                StatHandler.removeContainer(player, otherDoor.getLocation());
+                removeContainer(playerUuid, otherDoor.getLocation());
         }
 
+        removeContainer(playerUuid, block.getLocation());
+    }
+
+    private static void removeContainer(@NotNull final String playerUuid, @NotNull final Location location) {
         BlockCountStatistic countStatistic = new BlockCountStatistic();
         PlayerBlocksStatistic containersStatistic = new PlayerBlocksStatistic();
         StatHandler.getStatistic(countStatistic);
-        StatHandler.getStatistic(containersStatistic, player);
+        StatHandler.getStatisticForPlayer(containersStatistic, playerUuid);
         countStatistic.decrement();
-        containersStatistic.remove(block.getLocation());
+        containersStatistic.remove(location);
+    }
+
+    public static int unlockAllForPlayer(@NotNull final String playerUuid) {
+        PlayerBlocksStatistic containersStatistic = new PlayerBlocksStatistic();
+        getStatisticForPlayer(containersStatistic, playerUuid);
+        final var entries = new ArrayList<LocationListEntry>(containersStatistic.get());
+        int unlockedCount = 0;
+        for (LocationListEntry entry : entries) {
+            Location loc = entry.get();
+            if (loc == null || loc.getWorld() == null) {
+                if (loc != null) {
+                    removeContainer(playerUuid, loc);
+                }
+                continue;
+            }
+            Block block = loc.getBlock();
+            BlockNBTHandler handler = new BlockNBTHandler(block);
+            if (handler.isOwner(playerUuid)) {
+                handler.clear();
+                handler.applyToOtherContainer();
+                unlockedCount++;
+            }
+            removeContainer(playerUuid, block);
+        }
+        return unlockedCount;
+    }
+
+    public static int applyConfigurationToAll(@NotNull final Player player, @Nullable final NBTContainer clipboard) {
+        final String playerUuid = player.getUniqueId().toString();
+        PlayerBlocksStatistic containersStatistic = new PlayerBlocksStatistic();
+        getStatisticForPlayer(containersStatistic, playerUuid);
+        final var entries = new ArrayList<LocationListEntry>(containersStatistic.get());
+        final PlayerSettingsHandler settingsHandler = clipboard == null ? new PlayerSettingsHandler(player) : null;
+        int updatedCount = 0;
+
+        for (LocationListEntry entry : entries) {
+            Location loc = entry.get();
+            if (loc == null || loc.getWorld() == null) {
+                continue;
+            }
+            Block block = loc.getBlock();
+            BlockNBTHandler handler = new BlockNBTHandler(block);
+            if (!handler.isOwner(playerUuid)) {
+                continue;
+            }
+            if (clipboard != null) {
+                NBTContainer copy = new NBTContainer();
+                copy.mergeCompound(clipboard);
+                handler.pasteNbt(copy);
+            } else if (settingsHandler != null) {
+                handler.setFriends(java.util.Collections.emptyList());
+                settingsHandler.getFriendsStream()
+                    .filter(fh -> PluginIntegration.filterFriendByUuidForAll(UUID.fromString(fh.getName()), player, block))
+                    .forEach(handler::addFriend);
+                if (BlockProt.getDefaultConfig().disallowRedstoneOnPlace()) {
+                    handler.getRedstoneHandler().setAll(false);
+                } else {
+                    handler.getRedstoneHandler().reset();
+                }
+                handler.applyToOtherContainer();
+            }
+            updatedCount++;
+        }
+        return updatedCount;
     }
 
     /**
@@ -240,21 +316,19 @@ public final class StatHandler extends NBTHandler<NBTCompound> {
     }
 
     public static void getStatistic(@NotNull BukkitStatistic<?> statistic, @Nullable Player player) {
-        switch (statistic.getType()) {
-            case ALL:
-            case PLAYER:
-                // Only get the statistic if player is not null.
-                if (player != null) {
-                    final Optional<StatHandler> stats = getStatsForPlayer(player.getUniqueId().toString());
-                    stats.ifPresent(handler -> handler.updateStatistic(statistic));
-                }
+        getStatisticForPlayer(statistic, player == null ? null : player.getUniqueId().toString());
+    }
 
-                // Let "ALL" fallthrough.
-                if (statistic.getType() == StatisticType.PLAYER) break;
-            case GLOBAL:
-                final StatHandler stats = getServerStats();
-                stats.updateStatistic(statistic);
-                break;
+    public static void getStatisticForPlayer(@NotNull BukkitStatistic<?> statistic, @Nullable String playerUuid) {
+        if (statistic.getType() == StatisticType.ALL || statistic.getType() == StatisticType.PLAYER) {
+            if (playerUuid != null) {
+                getStatsForPlayer(playerUuid)
+                    .ifPresent(handler -> handler.updateStatistic(statistic));
+            }
+        }
+        if (statistic.getType() == StatisticType.ALL || statistic.getType() == StatisticType.GLOBAL) {
+            final StatHandler stats = getServerStats();
+            stats.updateStatistic(statistic);
         }
     }
 

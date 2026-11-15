@@ -25,6 +25,9 @@ import de.sean.blockprot.bukkit.Translator;
 import de.sean.blockprot.bukkit.events.BlockAccessMenuEvent;
 import de.sean.blockprot.bukkit.nbt.BlockNBTHandler;
 import de.sean.blockprot.bukkit.nbt.PlayerInventoryClipboard;
+import de.sean.blockprot.bukkit.nbt.StatHandler;
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.TextComponent;
 import net.wesjd.anvilgui.AnvilGUI;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -96,6 +99,17 @@ public class BlockLockInventory extends BlockProtInventory {
                     var container = PlayerInventoryClipboard.get(player.getUniqueId().toString());
                     if (handler != null && container != null)
                         handler.pasteNbt(container);
+                }
+                case ENDER_CHEST -> {
+                    var container = PlayerInventoryClipboard.get(player.getUniqueId().toString());
+                    if (container != null) {
+                        final int updatedCount = StatHandler.applyConfigurationToAll(player, container);
+                        final String msg = updatedCount == 0
+                            ? Translator.get(TranslationKey.MESSAGES__NO_PROTECTED_BLOCKS)
+                            : String.format(Translator.get(TranslationKey.MESSAGES__CONFIGURATION_APPLIED_TO_ALL), updatedCount);
+                        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(msg));
+                        closeAndOpen(player, null);
+                    }
                 }
                 case PAPER -> {
                     // Copy
@@ -192,6 +206,11 @@ public class BlockLockInventory extends BlockProtInventory {
                 TranslationKey.INVENTORIES__SET_BLOCK_NAME
             );
             if (PlayerInventoryClipboard.contains(player.getUniqueId().toString())) {
+                setItemStack(
+                    getSize() - 5 - rightItemOffset,
+                    Material.ENDER_CHEST,
+                    TranslationKey.INVENTORIES__APPLY_CONFIGURATION_TO_ALL
+                );
                 setItemStack(
                     getSize() - 4 - rightItemOffset,
                     Material.KNOWLEDGE_BOOK,

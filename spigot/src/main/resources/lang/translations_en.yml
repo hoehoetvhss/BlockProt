@@ -22,6 +22,8 @@ inventories:
   lock_on_place: "Lock automatically"
   copy_configuration: "Copy configuration"
   paste_configuration: "Paste configuration"
+  apply_configuration_to_all: "Apply configuration to all blocks"
+  update_all_configurations: "Update all block configurations"
   set_block_name: "Set block name"
   inspect_contents: "Inspect contents"
   redstone:
@@ -70,6 +72,9 @@ messages:
     (Click here to disable these hints.)
   hint_hover_text: "Open a menu from BlockProt or click here to disable hints."
   disabled_hints: "§6Disabled hints!"
+  configuration_applied_to_all: "Updated configuration for %d block(s)."
+  admin_unlocked_all: "Unlocked %d block(s) for %s."
+  no_protected_blocks: "No protected blocks found."
 
 integrations:
   lands:

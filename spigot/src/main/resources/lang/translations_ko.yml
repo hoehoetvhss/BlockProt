@@ -14,6 +14,8 @@ inventories:
   lock_on_place: "자동 잠금"
   copy_configuration: "설정 복사"
   paste_configuration: "설정 붙여넣기"
+  apply_configuration_to_all: "모든 블록에 설정 적용"
+  update_all_configurations: "전체 블록 설정 업데이트"
   set_block_name: "블록 이름 설정"
   inspect_contents: "내용물 확인"
   redstone:
@@ -62,6 +64,9 @@ messages:
     (이 안내를 끄려면 여기를 클릭하세요.)
   hint_hover_text: "BlockProt 메뉴를 열거나 여기를 클릭하여 안내를 끕니다."
   disabled_hints: "§6안내 메시지가 비활성화되었습니다!"
+  configuration_applied_to_all: "%d개 블록의 설정을 업데이트했습니다."
+  admin_unlocked_all: "%2$s님의 보호된 블록 %1$d개를 모두 해제했습니다."
+  no_protected_blocks: "보호된 블록이 없습니다."
 
 integrations:
   lands:

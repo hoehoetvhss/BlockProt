@@ -22,6 +22,9 @@ import de.sean.blockprot.bukkit.BlockProt;
 import de.sean.blockprot.bukkit.TranslationKey;
 import de.sean.blockprot.bukkit.Translator;
 import de.sean.blockprot.bukkit.nbt.PlayerSettingsHandler;
+import de.sean.blockprot.bukkit.nbt.StatHandler;
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -58,6 +61,14 @@ public class UserSettingsInventory extends BlockProtInventory {
                 state.friendSearchState = InventoryState.FriendSearchState.DEFAULT_FRIEND_SEARCH;
                 closeAndOpen(player, new FriendManageInventory().fill(player));
             }
+            case ENDER_CHEST -> {
+                final int updatedCount = StatHandler.applyConfigurationToAll(player, null);
+                final String msg = updatedCount == 0
+                    ? Translator.get(TranslationKey.MESSAGES__NO_PROTECTED_BLOCKS)
+                    : String.format(Translator.get(TranslationKey.MESSAGES__CONFIGURATION_APPLIED_TO_ALL), updatedCount);
+                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(msg));
+                closeAndOpen(player, null);
+            }
             default -> closeAndOpen(player, null); // This also includes Material.BLACK_STAINED_GLASS_PANE
         }
         event.setCancelled(true);
@@ -83,6 +94,11 @@ public class UserSettingsInventory extends BlockProtInventory {
                 TranslationKey.INVENTORIES__FRIENDS__MANAGE
             );
         }
+        setItemStack(
+            2,
+            Material.ENDER_CHEST,
+            TranslationKey.INVENTORIES__UPDATE_ALL_CONFIGURATIONS
+        );
         setBackButton();
         return inventory;
     }
