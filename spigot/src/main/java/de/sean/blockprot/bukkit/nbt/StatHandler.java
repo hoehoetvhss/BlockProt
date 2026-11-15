@@ -150,6 +150,10 @@ public final class StatHandler extends NBTHandler<NBTCompound> {
                 continue;
             }
             Block block = loc.getBlock();
+            if (!BlockProt.getDefaultConfig().isLockable(block.getType())) {
+                BlockProtDatabase.deleteBlock(loc);
+                continue;
+            }
             BlockNBTHandler handler = new BlockNBTHandler(block);
             if (handler.isOwner(playerUuid)) {
                 handler.clear();
@@ -172,8 +176,15 @@ public final class StatHandler extends NBTHandler<NBTCompound> {
                 continue;
             }
             Block block = loc.getBlock();
+            if (!BlockProt.getDefaultConfig().isLockable(block.getType())) {
+                BlockProtDatabase.deleteBlock(loc);
+                continue;
+            }
             BlockNBTHandler handler = new BlockNBTHandler(block);
             if (!handler.isOwner(playerUuid)) {
+                if (handler.isNotProtected()) {
+                    BlockProtDatabase.deleteBlock(loc);
+                }
                 continue;
             }
             if (clipboard != null) {
