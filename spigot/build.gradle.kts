@@ -45,10 +45,10 @@ dependencies {
 
     // Spigot
     compileOnly("org.spigotmc:spigot-api:26.3-R0.1-SNAPSHOT")
-    compileOnly("org.apache.commons:commons-lang3:3.13.0")
+    compileOnly("org.apache.commons:commons-lang3:3.22.0")
 
     // bStats
-    api("org.bstats:bstats-bukkit:3.0.2")
+    api("org.bstats:bstats-bukkit:3.2.1")
 
     // Dependencies
     implementation("de.tr7zw:item-nbt-api:$nbtApiVersion")
@@ -56,10 +56,11 @@ dependencies {
     implementation("org.enginehub:squirrelid:0.3.2")
 
     // Integrations
-    implementation("com.github.TownyAdvanced:Towny:$townyVersion")
+    compileOnly("net.kyori:adventure-api:4.17.0")
+    implementation("com.github.LlmDl:Towny:$townyVersion")
     implementation("me.clip:placeholderapi:$papiVersion")
     implementation("com.sk89q.worldguard:worldguard-bukkit:$worldGuardVersion")
-    implementation("com.github.angeschossen:LandsAPI:6.28.11")
+    implementation("com.github.IncrediblePlugins:LandsAPI:7.25.4")
 }
 
 blossom {
