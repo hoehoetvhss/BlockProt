@@ -86,12 +86,10 @@ public final class StatHandler extends NBTHandler<NBTCompound> {
         if (nbtFile != null) return;
 
         try {
-            // If there's no worlds on this server, that's not our issue.
-            World world = Bukkit.getServer().getWorlds().get(0);
-
-            final File baseFile = new File(world.getWorldFolder(), STAT_FILE_NAME);
-            backupFile = new File(world.getWorldFolder(), STAT_BACKUP_FILE_NAME);
-            temporarySwapFile = new File(world.getWorldFolder(), STAT_FILE_NAME + ".tmp");
+            File dataDir = BlockProt.getInstance().getDataDirectory();
+            final File baseFile = new File(dataDir, STAT_FILE_NAME);
+            backupFile = new File(dataDir, STAT_BACKUP_FILE_NAME);
+            temporarySwapFile = new File(dataDir, STAT_FILE_NAME + ".tmp");
 
             if (!backupFile.exists())
                 if (!backupFile.createNewFile())
@@ -222,6 +220,7 @@ public final class StatHandler extends NBTHandler<NBTCompound> {
     }
 
     public static void removeContainer(@NotNull final String playerUuid, @NotNull final Block block) {
+        /* Remove the other half of the door from the statistics as well */
         if (BlockProt.getDefaultConfig().isLockableDoor(block.getType())) {
             final Block otherDoor = BlockUtil.getOtherDoorHalf(block.getState());
             if (otherDoor != null)
@@ -321,11 +320,13 @@ public final class StatHandler extends NBTHandler<NBTCompound> {
 
     public static void getStatisticForPlayer(@NotNull BukkitStatistic<?> statistic, @Nullable String playerUuid) {
         if (statistic.getType() == StatisticType.ALL || statistic.getType() == StatisticType.PLAYER) {
+            // Only get the statistic if player is not null.
             if (playerUuid != null) {
                 getStatsForPlayer(playerUuid)
                     .ifPresent(handler -> handler.updateStatistic(statistic));
             }
         }
+        // Let "ALL" fallthrough.
         if (statistic.getType() == StatisticType.ALL || statistic.getType() == StatisticType.GLOBAL) {
             final StatHandler stats = getServerStats();
             stats.updateStatistic(statistic);

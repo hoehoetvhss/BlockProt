@@ -131,7 +131,9 @@ public final class BlockProt extends JavaPlugin {
         instance = this;
 
         try {
-            playerProfileCache = new SQLiteCache(new File(Bukkit.getWorldContainer(), "blockprot_usercache.sqlite"));
+            File dataDir = getDataDirectory();
+            File userCacheFile = new File(dataDir, "blockprot_usercache.sqlite");
+            playerProfileCache = new SQLiteCache(userCacheFile);
             playerProfileService = new CachedProfileService(playerProfileCache);
         } catch (IOException e) {
             throw new RuntimeException("Failed to open SQLite connection to usercache database", e);
@@ -310,6 +312,15 @@ public final class BlockProt extends JavaPlugin {
             }
         }
         return YamlConfiguration.loadConfiguration(file);
+    }
+
+    @NotNull
+    public File getDataDirectory() {
+        File dataDir = new File(getDataFolder(), "data");
+        if (!dataDir.exists()) {
+            dataDir.mkdirs();
+        }
+        return dataDir;
     }
 
     private boolean isRunningCraftBukkit() {
